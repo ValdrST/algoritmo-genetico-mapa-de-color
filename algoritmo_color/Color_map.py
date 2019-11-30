@@ -3,19 +3,34 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import threading
-from numba import jit
+import math
+
 class Color_map(Genetica):
-    def __init__(self,prob_cruza=0.3,prob_mut=0.1,porcentaje_elite=0.1,poblacion=1000,generaciones=1000, fitness_min = 0.9,tam_x=8,tam_y=8):
+    def __init__(self,prob_cruza=0.7,prob_mut=0.3,porcentaje_elite=0.1,poblacion=1000,generaciones=100, fitness_min = 0.9,tam_x=8,tam_y=8):
         Genetica.__init__(self,prob_cruza,prob_mut,porcentaje_elite,poblacion,generaciones,fitness_min)
         self.tam_x = tam_x
         self.tam_y = tam_y
-        self.rand_colors_dict = [(0,0,255),(0,255,255),(255,0,255),(0,255,0),(255,0,0)]
-    
+        self.rand_colors_dict = [(0,0,255),(255,255,0),(0,255,0),(255,0,0)]
+        self.disp_color = [17,18,13,16]
     @staticmethod
     def gen_random_color():
         return (random.randint(0,255),random.randint(0,255),random.randint(0,255))
     
+    
     def gen_random_individuo(self):
+        disp_color = []
+        for disp in self.disp_color:
+            disp_color.append(disp)
+        ind = np.zeros((self.tam_x*self.tam_y))
+        for i in range(self.tam_x*self.tam_y):
+            color_rand = random.randint(0,len(self.rand_colors_dict)-1)
+            while disp_color[color_rand] == 0:
+                color_rand = random.randint(0,len(self.rand_colors_dict)-1)
+            disp_color[color_rand] = disp_color[color_rand] - 1
+            ind[i] = color_rand
+        return ind.reshape(self.tam_x,self.tam_y)
+            
+
         return np.random.randint(low=0,high=len(self.rand_colors_dict),size=(self.tam_x,self.tam_y)).astype(int)
     
     def add_random_individuo(self):
@@ -28,20 +43,27 @@ class Color_map(Genetica):
         while len(self.poblacion_actual) < self.poblacion:
             pass
     
+    def contar_colores(self,individuo):
+        color = np.zeros((len(self.rand_colors_dict)))
+        for col in individuo.reshape(self.tam_x*self.tam_y):
+            color[int(col)] = color[int(col)] + 1
+        return color
+
+
     def mostrar_individuo(self,individuo):
         ind = []
         for x in range(self.tam_x):
             ind.append([])
             for y in range(self.tam_y):
-                ind[x].append(self.rand_colors_dict[individuo[x][y]])
+                ind[x].append(self.rand_colors_dict[int(individuo[x][y])])
         plt.imshow(ind)
         print(self.poblacion_actual)
+        print(self.contar_colores(individuo))
         plt.show()
         
     def evaluar(self):
         if self.poblacion_elite[0]["fitness"] >= self.fitness_min:
             return True
-        
         return False
 
     @staticmethod
@@ -66,8 +88,24 @@ class Color_map(Genetica):
                             aptitud = aptitud + 1
                         cont_aptitud = cont_aptitud + 1
         return aptitud/cont_aptitud
+    
+    @staticmethod
+    def fit_opt_2(individuo,tam_x,tam_y):
+        aptitud = 0
+        cont_aptitud = 0
+        for y in range(tam_y):
+            for x in range(tam_x):
+                val_act = individuo[x][y]
+                for y2 in range(tam_y):
+                    for x2 in range(tam_x):
+                        if x != x2 or y != y2:
+                            if val_act == individuo[x2][y2]:
+                                aptitud = aptitud + math.sqrt((x2-x)**2+(y2-y)**2)
+                                cont_aptitud = cont_aptitud + 1
+        return (aptitud/cont_aptitud)/10
 
     def fitness(self,individuo):
+        ##return self.fit_opt_2(individuo,self.tam_x,self.tam_y)
         return self.fit_opt(individuo,self.tam_x,self.tam_y)
         
 
@@ -81,22 +119,10 @@ class Color_map(Genetica):
                 if not self.is_elite(individuo2):
                     if random.random() <= self.prob_cruza:
                         individuo2["individuo"][x][y] = temp[x][y]
-        res1 = []
-        if not self.is_elite(individuo1):
-            threading.Thread(target=self.mutar,args=(individuo1["individuo"],res1,)).start()
-            individuo1["individuo"] = []
-        else:
-            res1.append(individuo1["individuo"])
-        res2 = []
-        if not self.is_elite(individuo2):
-            threading.Thread(target=self.mutar,args=(individuo2["individuo"],res2,)).start()
-            individuo2["individuo"] = []
-        else:
-            res2.append(individuo2["individuo"])
-        while len(res1) == 0 or len(res2) == 0:
-            pass
-        threading.Thread(target=self.calc_fitness,args=(res1[0],)).start()
-        threading.Thread(target=self.calc_fitness,args=(res2[0],)).start()
+        individuo1 = self.mutar(individuo1)
+        individuo2 = self.mutar(individuo2)
+        self.calc_fitness(individuo1["individuo"])
+        self.calc_fitness(individuo2["individuo"])
 
     def gen_rand_pos(self):
         x = random.randint(0,self.tam_x-1)
@@ -105,26 +131,43 @@ class Color_map(Genetica):
 
     def calc_fitness(self,individuo):
         self.poblacion_siguiente.append({"individuo":individuo,"fitness":self.fitness(individuo)})
-    
-    @jit(forceobj=True)
-    def mutar(self,individuo,res):
-        for x in range(self.tam_y):
-            for y in range(self.tam_x):
-                if random.random() <= self.prob_mut:
-                    individuo[x][y] = random.randint(0,len(self.rand_colors_dict)-1)
-        res.append(individuo)
+
+    def mutar(self,individuo):
+        ind = individuo
+        individuo = individuo["individuo"]
+        if not self.is_elite(ind):
+            for x in range(self.tam_y):
+                for y in range(self.tam_x):
+                    if random.random() <= self.prob_mut:
+                        rand_x = random.randint(0,self.tam_x-1)
+                        rand_y = random.randint(0,self.tam_y-1)
+                        temp = individuo[x][y]
+                        individuo[x][y] = individuo[rand_x][rand_y]
+                        individuo[rand_x][rand_y] = temp
+        ind["inidividuo"] = individuo
+        return ind
 
     def elite(self):
         pob = sorted(self.poblacion_actual, key = lambda i: i['fitness'],reverse=True)
         num_pob_elite = int(self.poblacion * self.porcentaje_elite)
         self.poblacion_elite = pob[:num_pob_elite]
-    
-    @jit(forceobj=True)
+
     def is_elite(self, individuo):
         for elite in self.poblacion_elite:
             if elite['fitness'] == individuo['fitness']:
                 return True
         return False
+    
+    def sust_not_elite(self,poblacion):
+        poblacion_nueva = []
+        for pob in poblacion:
+            if self.is_elite(pob):
+                poblacion_nueva.append(pob)
+            else:
+                ind = self.gen_random_individuo()
+                poblacion_nueva.append({"individuo":ind,"fitness":self.fitness(ind)})
+        return poblacion_nueva
+
 
     def evolucionar(self):
         self.gen_poblacion_inicial()
@@ -139,23 +182,20 @@ class Color_map(Genetica):
                 print("generacion {} El mejor candidato hasta ahora es {}".format(generacion+1,self.poblacion_elite[0]["fitness"]))
             candidatos = []
             ind_num = 0
-            for individuo in self.poblacion_actual:
+            while len(self.poblacion_actual) > 0:
                 ind_num = ind_num + 1
-                #print("individuo {} de la generacion {}".format(ind_num,generacion))
-                candidatos.append(individuo)
+                candidatos.append(self.poblacion_actual.pop())
                 if len(candidatos) == 2:
-                    self.cruzar(candidatos[0],candidatos[1])
+                    threading.Thread(target=self.cruzar,args=(candidatos[0],candidatos[1],)).start()
                     candidatos = []
             if len(candidatos) == 1:
-                self.poblacion_siguiente.append(individuo)
+                poblacion_siguiente.append(candidatos.pop())
             while(len(self.poblacion_siguiente)<self.poblacion):
                 pass
             self.poblacion_actual = []
-            self.poblacion_actual = self.poblacion_siguiente
+            self.poblacion_actual = self.sust_not_elite(self.poblacion_siguiente)
             self.poblacion_siguiente = []
             self.elite()
-        print("se llego al limite de generaciones")
-        print("DON VERGAS",self.poblacion_elite[0],"DON VERGAS SE VA")
         self.mostrar_individuo(self.poblacion_elite[0]["individuo"])
 
 
