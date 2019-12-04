@@ -191,7 +191,7 @@ class Color_map(Genetica):
                     threading.Thread(target=self.cruzar,args=(candidatos[0],candidatos[1],)).start()
                     candidatos = []
             if len(candidatos) == 1:
-                poblacion_siguiente.append(candidatos.pop())
+                self.poblacion_siguiente.append(candidatos.pop())
             while(len(self.poblacion_siguiente)<self.poblacion):
                 pass
             self.poblacion_actual = []
