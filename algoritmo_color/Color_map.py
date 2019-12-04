@@ -6,7 +6,7 @@ import threading
 import math
 
 class Color_map(Genetica):
-    def __init__(self,prob_cruza=0.7,prob_mut=0.3,porcentaje_elite=0.1,poblacion=1000,generaciones=100, fitness_min = 0.9,tam_x=8,tam_y=8):
+    def __init__(self,prob_cruza=0.8,prob_mut=0.35,porcentaje_elite=0.1,poblacion=300,generaciones=10000, fitness_min = 0.9,tam_x=8,tam_y=8):
         Genetica.__init__(self,prob_cruza,prob_mut,porcentaje_elite,poblacion,generaciones,fitness_min)
         self.tam_x = tam_x
         self.tam_y = tam_y
@@ -57,9 +57,12 @@ class Color_map(Genetica):
             for y in range(self.tam_y):
                 ind[x].append(self.rand_colors_dict[int(individuo[x][y])])
         plt.imshow(ind)
-        print(self.poblacion_actual)
         print(self.contar_colores(individuo))
+        file = "resultados.csv"
+        with open(file,"a") as f:
+            f.write("\n"+str(self.prob_cruza)+","+str(self.prob_mut)+","+str(self.porcentaje_elite)+","+str(self.poblacion)+","+str(self.generaciones)+","+str(self.fitness_min)+","+str(float(self.poblacion_elite[0]["fitness"])*100)+"%")
         plt.show()
+
         
     def evaluar(self):
         if self.poblacion_elite[0]["fitness"] >= self.fitness_min:
@@ -107,7 +110,6 @@ class Color_map(Genetica):
     def fitness(self,individuo):
         ##return self.fit_opt_2(individuo,self.tam_x,self.tam_y)
         return self.fit_opt(individuo,self.tam_x,self.tam_y)
-        
 
     def cruzar(self,individuo1,individuo2):
         temp = individuo1["individuo"]
@@ -121,8 +123,8 @@ class Color_map(Genetica):
                         individuo2["individuo"][x][y] = temp[x][y]
         individuo1 = self.mutar(individuo1)
         individuo2 = self.mutar(individuo2)
-        self.calc_fitness(individuo1["individuo"])
-        self.calc_fitness(individuo2["individuo"])
+        threading.Thread(target=self.calc_fitness,args=(individuo1["individuo"],)).start()
+        threading.Thread(target=self.calc_fitness,args=(individuo2["individuo"],)).start()
 
     def gen_rand_pos(self):
         x = random.randint(0,self.tam_x-1)
@@ -153,9 +155,9 @@ class Color_map(Genetica):
         self.poblacion_elite = pob[:num_pob_elite]
 
     def is_elite(self, individuo):
-        for elite in self.poblacion_elite:
-            if elite['fitness'] == individuo['fitness']:
-                return True
+        tam_elite = len(self.poblacion_elite) - 1
+        if individuo['fitness'] >= self.poblacion_elite[tam_elite]['fitness']:
+            return True
         return False
     
     def sust_not_elite(self,poblacion):
