@@ -48,8 +48,10 @@
 * Se calculan las posiciones de los genes adjuntos
   - norte,sur,este,oeste,suroeste,noroeste,sureste,noreste.
 * por cada gen se compara en todas las direcciones posibles, si el gen de x posicion es igual al gen del centro entonces se aumenta un contador de genes iguales
+ ![ejemplo grafico](algoritmo_color/img/img_1.png?raw=false "Busqueda de patrones")
   - Si es igual o no se tiene otro contador que aumenta para contar el numero de comparaciones hechas
 * Se obtiene el promedio de todas las comparaciones hechas en cada gen y este debe dar un valor comprendido entre [0 - 1.0] donde 1.0 es 100%.
+
 
 ### Algoritmo evolucionar
 1. generar poblacion inicial

@@ -6,7 +6,7 @@ import threading
 import math
 
 class Color_map(Genetica):
-    def __init__(self,prob_cruza=0.8,prob_mut=0.5,porcentaje_elite=0.1,poblacion=1000,generaciones=10000, fitness_min = 0.9,tam_x=8,tam_y=8):
+    def __init__(self,prob_cruza=0.8,prob_mut=0.5,porcentaje_elite=0.1,poblacion=50,generaciones=100, fitness_min = 0.9,tam_x=8,tam_y=8):
         Genetica.__init__(self,prob_cruza,prob_mut,porcentaje_elite,poblacion,generaciones,fitness_min)
         self.tam_x = tam_x
         self.tam_y = tam_y
